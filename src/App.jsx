@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supabase } from "./supabase";
 
 const CORES = {
   wildflower: {
@@ -450,6 +451,34 @@ export default function App() {
   const [showAllArchetypes, setShowAllArchetypes] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [shareStatus, setShareStatus] = useState(``);
+  const [answerHistory, setAnswerHistory] = useState([]);
+  const [resultRowId, setResultRowId] = useState(null);
+
+  const saveResultToSupabase = async (finalScores) => {
+    const coreKeys = [`wildflower`, `feral`, `hearth`, `force`, `noticer`, `weaver`, `gatherer`, `muse`, `pilgrim`];
+    const modKeys = [`storyteller`, `curator`, `defender`, `wit`];
+    const rankedCores = coreKeys.map(key => ({ key, score: finalScores[key] })).sort((a, b) => b.score - a.score);
+    const topModifier = modKeys.reduce((max, key) => finalScores[key] > finalScores[max] ? key : max, modKeys[0]);
+
+    try {
+      const { data, error } = await supabase
+        .from(`quiz_results`)
+        .insert([{
+          primary_archetype: rankedCores[0].key,
+          secondary_archetype: rankedCores[1].key,
+          modifier: topModifier,
+          scores: finalScores
+        }])
+        .select();
+      if (error) {
+        console.error(`supabase save error:`, error);
+      } else if (data && data[0]) {
+        setResultRowId(data[0].id);
+      }
+    } catch (err) {
+      console.error(`supabase save exception:`, err);
+    }
+  };
 
   const handleAnswer = (option) => {
     const newScores = { ...scores };
@@ -457,14 +486,32 @@ export default function App() {
       newScores[key] += value;
     });
     setScores(newScores);
-    
+
+    const newHistory = [...answerHistory.slice(0, currentQ), option];
+    setAnswerHistory(newHistory);
+
     if (currentQ < QUESTIONS.length - 1) {
       setCurrentQ(currentQ + 1);
       window.scrollTo({ top: 0, behavior: `smooth` });
     } else {
+      saveResultToSupabase(newScores);
       setStage(`results`);
       window.scrollTo({ top: 0, behavior: `smooth` });
     }
+  };
+
+  const handleBack = () => {
+    if (currentQ === 0) return;
+    const previousAnswer = answerHistory[currentQ - 1];
+    if (previousAnswer) {
+      const newScores = { ...scores };
+      Object.entries(previousAnswer.scores).forEach(([key, value]) => {
+        newScores[key] -= value;
+      });
+      setScores(newScores);
+    }
+    setCurrentQ(currentQ - 1);
+    window.scrollTo({ top: 0, behavior: `smooth` });
   };
 
   const getRankedCores = () => {
@@ -491,6 +538,8 @@ export default function App() {
     setShowAllArchetypes(false);
     setEmailSubmitted(false);
     setShareStatus(``);
+    setAnswerHistory([]);
+    setResultRowId(null);
   };
 
   const handleShare = async () => {
@@ -573,6 +622,7 @@ export default function App() {
   if (stage === "quiz") {
     const q = QUESTIONS[currentQ];
     const progress = ((currentQ + 1) / QUESTIONS.length) * 100;
+    const previousSelection = answerHistory[currentQ];
 
     return (
       <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-8 font-serif">
@@ -595,16 +645,34 @@ export default function App() {
           </h2>
 
           <div className="space-y-3">
-            {q.options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => handleAnswer(option)}
-                className="w-full text-left p-4 bg-white border border-stone-200 hover:border-stone-800 hover:bg-stone-100 transition-colors text-stone-700 leading-relaxed"
-              >
-                {option.text}
-              </button>
-            ))}
+            {q.options.map((option, i) => {
+              const isPreviousSelection = previousSelection && previousSelection.text === option.text;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleAnswer(option)}
+                  className={`w-full text-left p-4 border transition-colors leading-relaxed ${
+                    isPreviousSelection
+                      ? `bg-stone-800 text-stone-50 border-stone-800`
+                      : `bg-white border-stone-200 hover:border-stone-800 hover:bg-stone-100 text-stone-700`
+                  }`}
+                >
+                  {option.text}
+                </button>
+              );
+            })}
           </div>
+
+          {currentQ > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={handleBack}
+                className="w-full text-left p-4 bg-stone-50 border border-stone-300 hover:border-stone-600 hover:bg-stone-100 text-stone-500 text-sm italic transition-colors"
+              >
+                ← back
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -719,7 +787,24 @@ export default function App() {
                 className="w-full p-3 border border-stone-300 text-stone-700"
               />
               <button
-                onClick={() => email.includes(`@`) && setEmailSubmitted(true)}
+                onClick={async () => {
+                  if (!email.includes(`@`)) return;
+                  setEmailSubmitted(true);
+                  try {
+                    if (resultRowId) {
+                      await supabase
+                        .from(`quiz_results`)
+                        .update({ email: email })
+                        .eq(`id`, resultRowId);
+                    } else {
+                      await supabase
+                        .from(`quiz_results`)
+                        .insert([{ email: email }]);
+                    }
+                  } catch (err) {
+                    console.error(`email save error:`, err);
+                  }
+                }}
                 className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
               >
                 send it to me
@@ -806,4 +891,3 @@ export default function App() {
     </div>
   );
 }
-
