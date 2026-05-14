@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
 const CORES = {
@@ -447,12 +447,34 @@ export default function App() {
     weaver: 0, gatherer: 0, muse: 0, pilgrim: 0,
     storyteller: 0, curator: 0, defender: 0, wit: 0
   });
+  const [name, setName] = useState(``);
   const [email, setEmail] = useState(``);
   const [showAllArchetypes, setShowAllArchetypes] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [shareStatus, setShareStatus] = useState(``);
   const [answerHistory, setAnswerHistory] = useState([]);
   const [resultRowId, setResultRowId] = useState(null);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [sharedResult, setSharedResult] = useState(null);
+
+  // Check URL on load for share parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shareParam = params.get(`share`);
+    const fromParam = params.get(`from`);
+    if (shareParam) {
+      const parts = shareParam.split(`-`);
+      if (parts.length >= 3) {
+        setSharedResult({
+          primary: parts[0],
+          secondary: parts[1],
+          modifier: parts[2],
+          from: fromParam || ``
+        });
+        setStage(`shareLanding`);
+      }
+    }
+  }, []);
 
   const saveResultToSupabase = async (finalScores) => {
     const coreKeys = [`wildflower`, `feral`, `hearth`, `force`, `noticer`, `weaver`, `gatherer`, `muse`, `pilgrim`];
@@ -467,7 +489,8 @@ export default function App() {
           primary_archetype: rankedCores[0].key,
           secondary_archetype: rankedCores[1].key,
           modifier: topModifier,
-          scores: finalScores
+          scores: finalScores,
+          name: name || null
         }])
         .select();
       if (error) {
@@ -534,12 +557,69 @@ export default function App() {
       weaver: 0, gatherer: 0, muse: 0, pilgrim: 0,
       storyteller: 0, curator: 0, defender: 0, wit: 0
     });
+    setName(``);
     setEmail(``);
     setShowAllArchetypes(false);
     setEmailSubmitted(false);
     setShareStatus(``);
     setAnswerHistory([]);
     setResultRowId(null);
+    setShareLinkCopied(false);
+    setSharedResult(null);
+    // Clear URL params so they don't loop back to share landing
+    if (window.location.search) {
+      window.history.replaceState({}, ``, window.location.pathname);
+    }
+  };
+
+  const startQuizFromShare = () => {
+    setSharedResult(null);
+    setStage(`nameEntry`);
+    if (window.location.search) {
+      window.history.replaceState({}, ``, window.location.pathname);
+    }
+    window.scrollTo({ top: 0, behavior: `smooth` });
+  };
+
+  const buildShareUrl = () => {
+    const ranked = getRankedCores();
+    const primaryKey = ranked[0].key;
+    const secondaryKey = ranked[1].key;
+    const modifierKey = getPrimaryModifier();
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const sharePath = `${primaryKey}-${secondaryKey}-${modifierKey}`;
+    const fromParam = name ? `&from=${encodeURIComponent(name.trim())}` : ``;
+    return `${baseUrl}?share=${sharePath}${fromParam}`;
+  };
+
+  const handleCopyShareLink = async () => {
+    const url = buildShareUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 3000);
+    } catch (err) {
+      console.error(`copy failed:`, err);
+    }
+  };
+
+  const handleNativeShareLink = async () => {
+    const url = buildShareUrl();
+    const ranked = getRankedCores();
+    const primary = CORES[ranked[0].key];
+    const modifier = MODIFIERS[getPrimaryModifier()];
+    const shareText = name
+      ? `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. what are you?`
+      : `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. take it.`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Nine Women, One House`, text: shareText, url });
+      } catch (err) {
+        // canceled
+      }
+    } else {
+      handleCopyShareLink();
+    }
   };
 
   const handleShare = async () => {
@@ -604,7 +684,7 @@ export default function App() {
           </div>
 
           <button 
-            onClick={() => setStage(`quiz`)}
+            onClick={() => setStage(`nameEntry`)}
             className="bg-stone-800 text-stone-50 px-10 py-4 text-sm uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
           >
             begin
@@ -613,6 +693,120 @@ export default function App() {
           <p className="text-xs text-stone-400 mt-12 italic">
             by @mrslovehealthdoc
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // SHARE LANDING (when someone clicks a friend's share link)
+  if (stage === "shareLanding" && sharedResult) {
+    const primary = CORES[sharedResult.primary];
+    const secondary = CORES[sharedResult.secondary];
+    const modifier = MODIFIERS[sharedResult.modifier];
+
+    if (!primary || !secondary || !modifier) {
+      // Bad share link, fall back to landing
+      return (
+        <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center font-serif">
+          <div className="max-w-md w-full text-center">
+            <p className="text-sm text-stone-600 mb-6 italic">that share link didn't quite work. take the quiz fresh:</p>
+            <button
+              onClick={startQuizFromShare}
+              className="bg-stone-800 text-stone-50 px-10 py-4 text-sm uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+            >
+              begin
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const sharerName = sharedResult.from ? sharedResult.from.toLowerCase() : ``;
+
+    return (
+      <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center font-serif">
+        <div className="max-w-md w-full text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-8">a domestic archetype quiz</p>
+
+          <p className="text-sm text-stone-600 mb-3 italic">
+            {sharerName ? `${sharerName} got:` : `your friend got:`}
+          </p>
+
+          <h1 className="text-3xl leading-tight italic mb-2">{primary.name}</h1>
+          <p className="text-sm text-stone-600 italic mb-1">with {modifier.name} energy</p>
+          <p className="text-sm text-stone-500 italic mb-8">and a {secondary.name.replace(`The `, ``)} running underneath</p>
+
+          <div className="my-10 py-6 border-t border-b border-stone-300">
+            <p className="text-lg italic text-stone-700">{primary.vibe}</p>
+          </div>
+
+          <p className="text-base text-stone-700 mb-10 italic leading-relaxed">
+            twenty questions.<br/>
+            about five minutes.<br/>
+            <em>alarmingly accurate, respectfully.</em>
+          </p>
+
+          <button
+            onClick={startQuizFromShare}
+            className="bg-stone-800 text-stone-50 px-10 py-4 text-sm uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+          >
+            find out yours →
+          </button>
+
+          <p className="text-xs text-stone-400 mt-12 italic">
+            by @mrslovehealthdoc
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // NAME ENTRY (between landing and quiz)
+  if (stage === "nameEntry") {
+    return (
+      <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center justify-center font-serif">
+        <div className="max-w-md w-full">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-8 text-center">first things first</p>
+
+          <h2 className="text-2xl leading-relaxed mb-8 italic text-center">
+            what's your first name?
+          </h2>
+
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === `Enter` && name.trim()) {
+                setStage(`quiz`);
+                window.scrollTo({ top: 0, behavior: `smooth` });
+              }
+            }}
+            placeholder="your name"
+            className="w-full p-4 border border-stone-300 text-stone-700 mb-3 text-center italic"
+            autoFocus
+          />
+
+          <p className="text-xs text-stone-400 mb-8 text-center italic">
+            so your result feels like it's about you. that's it.
+          </p>
+
+          <button
+            onClick={() => {
+              if (name.trim()) {
+                setStage(`quiz`);
+                window.scrollTo({ top: 0, behavior: `smooth` });
+              }
+            }}
+            disabled={!name.trim()}
+            className={`w-full py-4 text-sm uppercase tracking-[0.2em] transition-colors ${
+              name.trim()
+                ? `bg-stone-800 text-stone-50 hover:bg-stone-700`
+                : `bg-stone-300 text-stone-500 cursor-not-allowed`
+            }`}
+          >
+            begin
+          </button>
         </div>
       </div>
     );
@@ -692,7 +886,9 @@ export default function App() {
       {/* HERO */}
       <div className="bg-stone-800 text-stone-50 px-6 py-16">
         <div className="max-w-md mx-auto text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">your archetype</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">
+            {name ? `${name.toLowerCase()} — your archetype` : `your archetype`}
+          </p>
           <h1 className="text-3xl md:text-4xl italic mb-3 leading-tight">
             {primary.name}
           </h1>
@@ -774,8 +970,8 @@ export default function App() {
       {/* EMAIL CAPTURE - moved up to right after vibe line for peak emotional moment */}
       <div className="px-6 pb-12">
         <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
-          <p className="text-sm text-stone-600 leading-relaxed mb-4">
-            want this sent to you? or want to know when more of these are coming?
+          <p className="text-sm text-stone-600 leading-relaxed mb-4 italic">
+            i'll send you updates when there's something worth sending. nothing else.
           </p>
           {!emailSubmitted ? (
             <div className="space-y-3">
@@ -799,7 +995,7 @@ export default function App() {
                     } else {
                       await supabase
                         .from(`quiz_results`)
-                        .insert([{ email: email }]);
+                        .insert([{ email: email, name: name || null }]);
                     }
                   } catch (err) {
                     console.error(`email save error:`, err);
@@ -807,7 +1003,7 @@ export default function App() {
                 }}
                 className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
               >
-                send it to me
+                keep me in the loop
               </button>
             </div>
           ) : (
@@ -816,7 +1012,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* SHARE - now with working share button */}
+      {/* SHARE - native share for general sharing */}
       <div className="px-6 pb-8 text-center">
         <div className="max-w-md mx-auto">
           <p className="text-sm text-stone-600 mb-4 italic">
@@ -831,6 +1027,30 @@ export default function App() {
           {shareStatus && (
             <p className="text-sm text-stone-600 mt-3 italic">{shareStatus}</p>
           )}
+        </div>
+      </div>
+
+      {/* INVITE A FRIEND - personalized share link */}
+      <div className="px-6 pb-12">
+        <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">invite a friend</p>
+          <p className="text-sm text-stone-600 leading-relaxed mb-5 italic">
+            send a personal link. they'll see what you got before they take it.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={handleNativeShareLink}
+              className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+            >
+              share my link
+            </button>
+            <button
+              onClick={handleCopyShareLink}
+              className="w-full bg-white border border-stone-300 text-stone-700 py-3 text-xs uppercase tracking-[0.2em] hover:border-stone-800 hover:bg-stone-50 transition-colors"
+            >
+              {shareLinkCopied ? `link copied ✓` : `copy link`}
+            </button>
+          </div>
         </div>
       </div>
 
