@@ -618,8 +618,8 @@ export default function App() {
     const primary = CORES[ranked[0].key];
     const modifier = MODIFIERS[getPrimaryModifier()];
     const shareText = name
-      ? `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. what are you?`
-      : `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. take it.`;
+      ? `got my profile. i'm ${primary.name} with ${modifier.name} energy. what are you?`
+      : `got my profile. i'm ${primary.name} with ${modifier.name} energy. take it.`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `Nine Women, One House`, text: shareText, url });
@@ -636,8 +636,8 @@ export default function App() {
     const primary = CORES[ranked[0].key];
     const modifier = MODIFIERS[getPrimaryModifier()];
     const shareText = name
-      ? `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. what are you?`
-      : `i took this quiz. i'm ${primary.name} with ${modifier.name} energy. take it.`;
+      ? `got my profile. i'm ${primary.name} with ${modifier.name} energy. what are you?`
+      : `got my profile. i'm ${primary.name} with ${modifier.name} energy. take it.`;
     const shareUrl = buildShareUrl();
 
     if (navigator.share) {
@@ -663,7 +663,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center font-serif">
         <div className="max-w-md w-full text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-6">a domestic archetype quiz</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-6">a domestic archetype profile</p>
           <h1 className="text-4xl leading-tight mb-2 italic">nine women,</h1>
           <h1 className="text-4xl leading-tight mb-10 italic">one house.</h1>
           
@@ -728,7 +728,7 @@ export default function App() {
       return (
         <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center font-serif">
           <div className="max-w-md w-full text-center">
-            <p className="text-sm text-stone-600 mb-6 italic">that share link didn't quite work. take the quiz fresh:</p>
+            <p className="text-sm text-stone-600 mb-6 italic">that share link didn't quite work. take it fresh:</p>
             <button
               onClick={startQuizFromShare}
               className="bg-stone-800 text-stone-50 px-10 py-4 text-sm uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
@@ -745,7 +745,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center font-serif">
         <div className="max-w-md w-full text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-8">a domestic archetype quiz</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-8">a domestic archetype profile</p>
 
           <p className="text-sm text-stone-600 mb-3 italic">
             {sharerName ? `${sharerName} got:` : `your friend got:`}
