@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import jsPDF from "jspdf";
 
 const CORES = {
   wildflower: {
@@ -463,14 +464,24 @@ export default function App() {
   const [shareStatus, setShareStatus] = useState(``);
   const [answerHistory, setAnswerHistory] = useState([]);
   const [resultRowId, setResultRowId] = useState(null);
+  const [resultSlug, setResultSlug] = useState(null);
+  const [resultLinkCopied, setResultLinkCopied] = useState(false);
+  const [loadingSavedResult, setLoadingSavedResult] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [sharedResult, setSharedResult] = useState(null);
 
-  // Check URL on load for share parameters
+  // Check URL on load for share parameters or saved result
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const shareParam = params.get(`share`);
     const fromParam = params.get(`from`);
+    const resultParam = params.get(`result`);
+
+    if (resultParam) {
+      loadSavedResult(resultParam);
+      return;
+    }
+
     if (shareParam) {
       const parts = shareParam.split(`-`);
       if (parts.length >= 3) {
@@ -485,11 +496,58 @@ export default function App() {
     }
   }, []);
 
+  const loadSavedResult = async (slug) => {
+    setLoadingSavedResult(true);
+    setStage(`loadingResult`);
+    try {
+      const { data, error } = await supabase
+        .from(`quiz_results`)
+        .select(`*`)
+        .eq(`result_slug`, slug)
+        .single();
+
+      if (error || !data) {
+        console.error(`could not load saved result:`, error);
+        setLoadingSavedResult(false);
+        setStage(`landing`);
+        return;
+      }
+
+      // Restore the result state from saved data
+      if (data.scores) {
+        setScores(data.scores);
+      }
+      if (data.name) {
+        setName(data.name);
+      }
+      setResultSlug(slug);
+      setResultRowId(data.id);
+      setLoadingSavedResult(false);
+      setStage(`results`);
+    } catch (err) {
+      console.error(`exception loading saved result:`, err);
+      setLoadingSavedResult(false);
+      setStage(`landing`);
+    }
+  };
+
+  const generateSlug = (primaryKey) => {
+    const chars = `abcdefghijklmnopqrstuvwxyz0123456789`;
+    let randomPart = ``;
+    for (let i = 0; i < 6; i++) {
+      randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `${primaryKey}-${randomPart}`;
+  };
+
   const saveResultToSupabase = async (finalScores) => {
     const coreKeys = [`wildflower`, `feral`, `hearth`, `force`, `noticer`, `weaver`, `gatherer`, `muse`, `pilgrim`];
     const modKeys = [`storyteller`, `curator`, `defender`, `wit`];
     const rankedCores = coreKeys.map(key => ({ key, score: finalScores[key] })).sort((a, b) => b.score - a.score);
     const topModifier = modKeys.reduce((max, key) => finalScores[key] > finalScores[max] ? key : max, modKeys[0]);
+
+    const slug = generateSlug(rankedCores[0].key);
+    setResultSlug(slug);
 
     try {
       const { data, error } = await supabase
@@ -499,7 +557,8 @@ export default function App() {
           secondary_archetype: rankedCores[1].key,
           modifier: topModifier,
           scores: finalScores,
-          name: name || null
+          name: name || null,
+          result_slug: slug
         }])
         .select();
       if (error) {
@@ -573,6 +632,9 @@ export default function App() {
     setShareStatus(``);
     setAnswerHistory([]);
     setResultRowId(null);
+    setResultSlug(null);
+    setResultLinkCopied(false);
+    setLoadingSavedResult(false);
     setShareLinkCopied(false);
     setSharedResult(null);
     // Clear URL params so they don't loop back to share landing
@@ -658,6 +720,231 @@ export default function App() {
     }
   };
 
+  const buildResultUrl = () => {
+    if (!resultSlug) return null;
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    return `${baseUrl}?result=${resultSlug}`;
+  };
+
+  const handleCopyResultLink = async () => {
+    const url = buildResultUrl();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setResultLinkCopied(true);
+      setTimeout(() => setResultLinkCopied(false), 3000);
+    } catch (err) {
+      console.error(`copy failed:`, err);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    const ranked = getRankedCores();
+    const primary = CORES[ranked[0].key];
+    const secondary = CORES[ranked[1].key];
+    const modifier = MODIFIERS[getPrimaryModifier()];
+
+    if (!primary || !secondary || !modifier) return;
+
+    // Create PDF — letter size, portrait
+    const pdf = new jsPDF({
+      orientation: `portrait`,
+      unit: `pt`,
+      format: `letter`
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 54;
+    const contentWidth = pageWidth - margin * 2;
+
+    // Dark background
+    pdf.setFillColor(44, 42, 35);
+    pdf.rect(0, 0, pageWidth, pageHeight, `F`);
+
+    let y = 70;
+
+    // Top label
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(9);
+    pdf.text(`A  D O M E S T I C   A R C H E T Y P E   P R O F I L E`, pageWidth / 2, y, { align: `center` });
+    y += 30;
+
+    // Profile for (if name)
+    if (name) {
+      pdf.setTextColor(165, 162, 154);
+      pdf.setFont(`times`, `italic`);
+      pdf.setFontSize(10);
+      pdf.text(`profile for: ${name.toLowerCase()}`, pageWidth / 2, y, { align: `center` });
+      y += 28;
+    } else {
+      y += 4;
+    }
+
+    // Primary name (BIG)
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(36);
+    pdf.text(primary.name, pageWidth / 2, y, { align: `center` });
+    y += 32;
+
+    // With modifier energy
+    pdf.setTextColor(209, 207, 198);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(14);
+    pdf.text(`with ${modifier.name.replace(`The `, ``)} energy`, pageWidth / 2, y, { align: `center` });
+    y += 18;
+
+    // and secondary running underneath
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFontSize(12);
+    pdf.text(`and a ${secondary.name.replace(`The `, ``)} running underneath`, pageWidth / 2, y, { align: `center` });
+    y += 30;
+
+    // Opening line
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(13);
+    const openingLines = pdf.splitTextToSize(primary.opening, contentWidth - 40);
+    openingLines.forEach((line) => {
+      pdf.text(line, pageWidth / 2, y, { align: `center` });
+      y += 18;
+    });
+    y += 10;
+
+    // Divider
+    pdf.setDrawColor(115, 112, 101);
+    pdf.setLineWidth(0.3);
+    pdf.line(pageWidth / 2 - 30, y, pageWidth / 2 + 30, y);
+    y += 28;
+
+    // Sections
+    const checkPageBreak = (needed) => {
+      if (y + needed > pageHeight - 50) {
+        pdf.addPage();
+        pdf.setFillColor(44, 42, 35);
+        pdf.rect(0, 0, pageWidth, pageHeight, `F`);
+        y = 70;
+      }
+    };
+
+    primary.sections.forEach((section) => {
+      checkPageBreak(80);
+
+      // Section label
+      pdf.setTextColor(165, 162, 154);
+      pdf.setFont(`times`, `normal`);
+      pdf.setFontSize(8);
+      pdf.text(section.label.toUpperCase(), margin, y);
+      y += 16;
+
+      // Section content
+      pdf.setTextColor(225, 222, 213);
+      pdf.setFont(`times`, `italic`);
+      pdf.setFontSize(11);
+
+      if (Array.isArray(section.content)) {
+        section.content.forEach((item) => {
+          const lines = pdf.splitTextToSize(`— ${item}`, contentWidth);
+          lines.forEach((line) => {
+            checkPageBreak(16);
+            pdf.text(line, margin, y);
+            y += 14;
+          });
+        });
+      } else {
+        const lines = pdf.splitTextToSize(section.content, contentWidth);
+        lines.forEach((line) => {
+          checkPageBreak(16);
+          pdf.text(line, margin, y);
+          y += 14;
+        });
+      }
+      y += 14;
+    });
+
+    // Divider before modifier
+    checkPageBreak(80);
+    pdf.setDrawColor(115, 112, 101);
+    pdf.line(pageWidth / 2 - 30, y, pageWidth / 2 + 30, y);
+    y += 28;
+
+    // Modifier section
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(8);
+    pdf.text(`YOUR MODIFIER`, pageWidth / 2, y, { align: `center` });
+    y += 22;
+
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(18);
+    pdf.text(modifier.name, pageWidth / 2, y, { align: `center` });
+    y += 24;
+
+    pdf.setTextColor(225, 222, 213);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(11);
+    const modLines = pdf.splitTextToSize(modifier.description, contentWidth);
+    modLines.forEach((line) => {
+      checkPageBreak(16);
+      pdf.text(line, margin, y);
+      y += 14;
+    });
+    y += 20;
+
+    // Secondary section
+    checkPageBreak(80);
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(8);
+    pdf.text(`RUNNING UNDERNEATH`, pageWidth / 2, y, { align: `center` });
+    y += 22;
+
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(18);
+    pdf.text(secondary.name, pageWidth / 2, y, { align: `center` });
+    y += 24;
+
+    pdf.setTextColor(225, 222, 213);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(11);
+    const secLines = pdf.splitTextToSize(primary.secondaryShort, contentWidth);
+    secLines.forEach((line) => {
+      checkPageBreak(16);
+      pdf.text(line, margin, y);
+      y += 14;
+    });
+    y += 30;
+
+    // Vibe line (closer)
+    checkPageBreak(60);
+    pdf.setDrawColor(115, 112, 101);
+    pdf.line(pageWidth / 2 - 30, y, pageWidth / 2 + 30, y);
+    y += 28;
+
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(16);
+    pdf.text(primary.vibe, pageWidth / 2, y, { align: `center` });
+    y += 40;
+
+    // Footer
+    pdf.setTextColor(140, 137, 128);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(9);
+    pdf.text(`nine women, one house  ·  by @mrslovehealthdoc`, pageWidth / 2, pageHeight - 30, { align: `center` });
+    pdf.text(`domesticarchetypes.com`, pageWidth / 2, pageHeight - 18, { align: `center` });
+
+    // Save with personalized filename
+    const filename = name
+      ? `${name.toLowerCase()}-${ranked[0].key}-profile.pdf`
+      : `${ranked[0].key}-profile.pdf`;
+    pdf.save(filename);
+  };
+
   // LANDING
   if (stage === "landing") {
     return (
@@ -712,6 +999,18 @@ export default function App() {
               @mrslovehealthdoc
             </a>
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // LOADING SAVED RESULT
+  if (stage === "loadingResult") {
+    return (
+      <div className="min-h-screen bg-stone-50 text-stone-800 px-6 py-12 flex flex-col items-center justify-center font-serif">
+        <div className="max-w-md w-full text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-6">retrieving your profile</p>
+          <p className="text-base text-stone-600 italic">one moment...</p>
         </div>
       </div>
     );
@@ -1057,6 +1356,32 @@ export default function App() {
           {shareStatus && (
             <p className="text-sm text-stone-600 mt-3 italic">{shareStatus}</p>
           )}
+        </div>
+      </div>
+
+      {/* SAVE YOUR PROFILE - PDF + persistent link */}
+      <div className="px-6 pb-12">
+        <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">keep this</p>
+          <p className="text-sm text-stone-600 leading-relaxed mb-5 italic">
+            save your profile. revisit when you forget who you are.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+            >
+              download as pdf
+            </button>
+            {resultSlug && (
+              <button
+                onClick={handleCopyResultLink}
+                className="w-full bg-white border border-stone-300 text-stone-700 py-3 text-xs uppercase tracking-[0.2em] hover:border-stone-800 hover:bg-stone-50 transition-colors"
+              >
+                {resultLinkCopied ? `link copied ✓` : `copy my profile link`}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
