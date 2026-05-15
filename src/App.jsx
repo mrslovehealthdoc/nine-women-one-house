@@ -911,7 +911,7 @@ export default function App() {
     pdf.setTextColor(225, 222, 213);
     pdf.setFont(`times`, `italic`);
     pdf.setFontSize(11);
-    const secLines = pdf.splitTextToSize(primary.secondaryShort, contentWidth);
+    const secLines = pdf.splitTextToSize(secondary.secondaryShort, contentWidth);
     secLines.forEach((line) => {
       checkPageBreak(16);
       pdf.text(line, margin, y);
