@@ -702,7 +702,15 @@ export default function App() {
           </button>
 
           <p className="text-xs text-stone-400 mt-12 italic">
-            by @mrslovehealthdoc
+            by{` `}
+            <a
+              href="https://instagram.com/mrslovehealthdoc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-stone-600 transition-colors"
+            >
+              @mrslovehealthdoc
+            </a>
           </p>
         </div>
       </div>
@@ -765,7 +773,15 @@ export default function App() {
           </button>
 
           <p className="text-xs text-stone-400 mt-12 italic">
-            by @mrslovehealthdoc
+            by{` `}
+            <a
+              href="https://instagram.com/mrslovehealthdoc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-stone-600 transition-colors"
+            >
+              @mrslovehealthdoc
+            </a>
           </p>
         </div>
       </div>
@@ -1044,6 +1060,24 @@ export default function App() {
         </div>
       </div>
 
+      {/* FOLLOW CTA - bridge from quiz to brand */}
+      <div className="px-6 pb-12 text-center">
+        <div className="max-w-md mx-auto">
+          <p className="text-sm text-stone-600 italic">
+            made by{` `}
+            <a
+              href="https://instagram.com/mrslovehealthdoc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-stone-800 underline hover:text-stone-600 transition-colors"
+            >
+              @mrslovehealthdoc
+            </a>
+            {` `}— follow for more of this.
+          </p>
+        </div>
+      </div>
+
       {/* EXPLORE - moved to bottom as system browse */}
       <div className="px-6 py-8 bg-stone-100 border-t border-stone-200">
         <div className="max-w-md mx-auto">
@@ -1095,7 +1129,15 @@ export default function App() {
         </button>
         
         <p className="text-xs text-stone-400 mt-12 italic">
-          nine women, one house · by @mrslovehealthdoc
+          nine women, one house · by{` `}
+          <a
+            href="https://instagram.com/mrslovehealthdoc"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-stone-600 transition-colors"
+          >
+            @mrslovehealthdoc
+          </a>
         </p>
       </div>
     </div>
