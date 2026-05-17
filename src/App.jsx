@@ -758,6 +758,46 @@ export default function App() {
   };
 
   // Submit email gate and download PDF
+  const sendProfileEmail = async (emailAddress) => {
+    // Build the full profile payload to send to the Edge Function
+    const ranked = getRankedCores();
+    const primary = CORES[ranked[0].key];
+    const secondary = CORES[ranked[1].key];
+    const modifier = MODIFIERS[getPrimaryModifier()];
+
+    if (!primary || !secondary || !modifier) {
+      console.error(`Missing archetype data for email`);
+      return;
+    }
+
+    const payload = {
+      email: emailAddress,
+      name: name || ``,
+      primaryName: primary.name,
+      primaryVibe: primary.vibe,
+      primaryOpening: primary.opening,
+      modifierName: modifier.name,
+      modifierDescription: modifier.description,
+      secondaryName: secondary.name,
+      secondaryShort: secondary.secondaryShort,
+      sections: primary.sections,
+      resultUrl: buildResultUrl() || `https://domesticarchetypes.com`
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke(`send-profile-email`, {
+        body: payload
+      });
+      if (error) {
+        console.error(`Email send error:`, error);
+      } else {
+        console.log(`Email sent successfully:`, data);
+      }
+    } catch (err) {
+      console.error(`Email function exception:`, err);
+    }
+  };
+
   const handleSubmitPdfEmail = async () => {
     if (!pdfGateEmail.includes(`@`)) return;
 
@@ -786,6 +826,9 @@ export default function App() {
     handleDownloadPDF();
     setPdfSaved(true);
     setTimeout(() => setPdfSaved(false), 3000);
+
+    // Trigger the email send via Edge Function (fire and forget — don't block UI)
+    sendProfileEmail(pdfGateEmail);
   };
 
   const handleDownloadPDF = () => {
@@ -1375,6 +1418,8 @@ export default function App() {
                   } catch (err) {
                     console.error(`email save error:`, err);
                   }
+                  // Trigger profile email send (fire and forget)
+                  sendProfileEmail(email);
                 }}
                 className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
               >
@@ -1382,7 +1427,7 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-stone-700 italic">got it. talk soon.</p>
+            <p className="text-sm text-stone-700 italic">got it. check your inbox 🪞</p>
           )}
         </div>
       </div>
@@ -1421,7 +1466,7 @@ export default function App() {
                 onClick={handleSaveProfileClick}
                 className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
               >
-                {pdfSaved ? `saved ✓ check your downloads` : `save my profile`}
+                {pdfSaved ? `saved ✓ check downloads + inbox 🪞` : `save my profile`}
               </button>
             ) : (
               <div className="space-y-3">
