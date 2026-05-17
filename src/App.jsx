@@ -1456,9 +1456,9 @@ export default function App() {
       {/* SAVE YOUR PROFILE - PDF (email-gated) + persistent link (free) */}
       <div className="px-6 pb-12">
         <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">keep it where you won't lose it</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">save your profile</p>
           <p className="text-sm text-stone-600 leading-relaxed mb-5 italic">
-            save your profile. revisit when you forget who you are.
+            revisit when you forget who you are.
           </p>
           <div className="space-y-3">
             {!showPdfEmailGate ? (
@@ -1466,12 +1466,12 @@ export default function App() {
                 onClick={handleSaveProfileClick}
                 className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
               >
-                {pdfSaved ? `saved ✓ check downloads + inbox 🪞` : `save my profile`}
+                {pdfSaved ? `saved ✓ check downloads + inbox 🪞` : `keep this where i won't lose it (pdf + email)`}
               </button>
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-stone-600 italic">
-                  drop your email and i'll save your profile.
+                  drop your email — i'll send it to your inbox and download a copy.
                 </p>
                 <input
                   type="email"
@@ -1495,7 +1495,7 @@ export default function App() {
                       : `bg-stone-300 text-stone-500 cursor-not-allowed`
                   }`}
                 >
-                  send my profile
+                  send it to me
                 </button>
                 <button
                   onClick={() => {
