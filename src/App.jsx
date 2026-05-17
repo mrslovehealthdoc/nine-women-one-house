@@ -891,15 +891,15 @@ export default function App() {
     // With modifier energy
     pdf.setTextColor(225, 222, 213);
     pdf.setFont(`times`, `italic`);
-    pdf.setFontSize(14);
+    pdf.setFontSize(16);
     pdf.text(`with ${modifier.name.replace(`The `, ``)} energy`, pageWidth / 2, y, { align: `center` });
-    y += 18;
+    y += 20;
 
     // & secondary underneath
     pdf.setTextColor(225, 222, 213);
-    pdf.setFontSize(14);
+    pdf.setFontSize(16);
     pdf.text(`& ${secondary.name.replace(`The `, ``)} underneath`, pageWidth / 2, y, { align: `center` });
-    y += 30;
+    y += 32;
 
     // Opening line
     pdf.setTextColor(245, 244, 237);
@@ -1153,7 +1153,7 @@ export default function App() {
           <div className="flex items-center justify-center mb-4">
             <div className="w-10 h-px bg-stone-400"></div>
           </div>
-          <p className="text-sm text-stone-700 italic mb-8 leading-relaxed">
+          <p className="text-base md:text-lg italic text-stone-700 mb-8 leading-relaxed">
             with <span className="text-stone-900">{modifier.name.replace(`The `, ``)}</span> energy
             <br />
             <span className="text-stone-500">&amp;</span> <span className="text-stone-900">{secondary.name.replace(`The `, ``)}</span> underneath
@@ -1326,7 +1326,7 @@ export default function App() {
           <div className="flex items-center justify-center mb-6">
             <div className="w-12 h-px bg-stone-500"></div>
           </div>
-          <p className="text-base md:text-lg italic text-stone-100 mb-10 leading-relaxed px-2">
+          <p className="text-lg md:text-xl italic text-stone-100 mb-10 leading-relaxed px-2">
             with <span className="text-white">{modifier.name.replace(`The `, ``)}</span> energy
             <br />
             <span className="text-stone-300">&amp;</span> <span className="text-white">{secondary.name.replace(`The `, ``)}</span> underneath
