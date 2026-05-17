@@ -5,7 +5,8 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const FROM_EMAIL = "Abby <abby@domesticarchetypes.com>";
+const FROM_EMAIL = "abby <abby@domesticarchetypes.com>";
+const REPLY_TO_EMAIL = "draperone@lovehealth.live";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -235,6 +236,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [payload.email],
+        reply_to: REPLY_TO_EMAIL,
         subject: subject,
         html: htmlBody,
       }),
