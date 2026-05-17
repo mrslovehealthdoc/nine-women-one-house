@@ -880,17 +880,23 @@ export default function App() {
     pdf.setFont(`times`, `italic`);
     pdf.setFontSize(36);
     pdf.text(primary.name, pageWidth / 2, y, { align: `center` });
-    y += 32;
+    y += 18;
+
+    // Em-dash divider
+    pdf.setDrawColor(165, 162, 154);
+    pdf.setLineWidth(0.4);
+    pdf.line(pageWidth / 2 - 22, y, pageWidth / 2 + 22, y);
+    y += 18;
 
     // With modifier energy
-    pdf.setTextColor(209, 207, 198);
+    pdf.setTextColor(225, 222, 213);
     pdf.setFont(`times`, `italic`);
     pdf.setFontSize(14);
     pdf.text(`with ${modifier.name.replace(`The `, ``)} energy`, pageWidth / 2, y, { align: `center` });
     y += 18;
 
     // & secondary underneath
-    pdf.setTextColor(209, 207, 198);
+    pdf.setTextColor(225, 222, 213);
     pdf.setFontSize(14);
     pdf.text(`& ${secondary.name.replace(`The `, ``)} underneath`, pageWidth / 2, y, { align: `center` });
     y += 30;
@@ -1143,9 +1149,15 @@ export default function App() {
             {sharerName ? `${sharerName} got:` : `your friend got:`}
           </p>
 
-          <h1 className="text-3xl leading-tight italic mb-2">{primary.name}</h1>
-          <p className="text-sm text-stone-600 italic mb-1">with {modifier.name.replace(`The `, ``)} energy</p>
-          <p className="text-sm text-stone-600 italic mb-8">& {secondary.name.replace(`The `, ``)} underneath</p>
+          <h1 className="text-3xl leading-tight italic mb-4">{primary.name}</h1>
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-10 h-px bg-stone-400"></div>
+          </div>
+          <p className="text-sm text-stone-700 italic mb-8 leading-relaxed">
+            with <span className="text-stone-900">{modifier.name.replace(`The `, ``)}</span> energy
+            <br />
+            <span className="text-stone-500">&amp;</span> <span className="text-stone-900">{secondary.name.replace(`The `, ``)}</span> underneath
+          </p>
 
           <div className="my-10 py-6 border-t border-b border-stone-300">
             <p className="text-lg italic text-stone-700">{primary.vibe}</p>
@@ -1308,13 +1320,16 @@ export default function App() {
           <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">
             {name ? `${name.toLowerCase()} — your archetype profile` : `your archetype profile`}
           </p>
-          <h1 className="text-3xl md:text-4xl italic mb-4 leading-tight">
+          <h1 className="text-3xl md:text-4xl italic mb-6 leading-tight">
             {primary.name}
           </h1>
-          <p className="text-base md:text-lg italic text-stone-200 mb-8 leading-relaxed">
-            with {modifier.name.replace(`The `, ``)} energy
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-12 h-px bg-stone-500"></div>
+          </div>
+          <p className="text-base md:text-lg italic text-stone-100 mb-10 leading-relaxed px-2">
+            with <span className="text-white">{modifier.name.replace(`The `, ``)}</span> energy
             <br />
-            <span className="text-stone-200">& {secondary.name.replace(`The `, ``)} underneath</span>
+            <span className="text-stone-300">&amp;</span> <span className="text-white">{secondary.name.replace(`The `, ``)}</span> underneath
           </p>
           <p className="text-lg italic text-stone-100 leading-relaxed">
             `{primary.opening}`
@@ -1464,9 +1479,16 @@ export default function App() {
             {!showPdfEmailGate ? (
               <button
                 onClick={handleSaveProfileClick}
-                className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+                className="w-full bg-stone-800 text-stone-50 py-3 px-4 hover:bg-stone-700 transition-colors"
               >
-                {pdfSaved ? `saved ✓ check downloads + inbox 🪞` : `keep this where i won't lose it (pdf + email)`}
+                {pdfSaved ? (
+                  <span className="text-xs uppercase tracking-[0.2em]">saved ✓ check downloads + inbox 🪞</span>
+                ) : (
+                  <>
+                    <span className="block text-xs uppercase tracking-[0.2em]">keep this where i won't lose it</span>
+                    <span className="block text-[10px] italic text-stone-300 mt-1 normal-case tracking-normal">(pdf + email)</span>
+                  </>
+                )}
               </button>
             ) : (
               <div className="space-y-3">
