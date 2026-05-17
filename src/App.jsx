@@ -846,10 +846,10 @@ export default function App() {
     pdf.text(`with ${modifier.name.replace(`The `, ``)} energy`, pageWidth / 2, y, { align: `center` });
     y += 18;
 
-    // and secondary running underneath
-    pdf.setTextColor(165, 162, 154);
-    pdf.setFontSize(12);
-    pdf.text(`and a ${secondary.name.replace(`The `, ``)} running underneath`, pageWidth / 2, y, { align: `center` });
+    // & secondary underneath
+    pdf.setTextColor(209, 207, 198);
+    pdf.setFontSize(14);
+    pdf.text(`& ${secondary.name.replace(`The `, ``)} underneath`, pageWidth / 2, y, { align: `center` });
     y += 30;
 
     // Opening line
@@ -1101,8 +1101,8 @@ export default function App() {
           </p>
 
           <h1 className="text-3xl leading-tight italic mb-2">{primary.name}</h1>
-          <p className="text-sm text-stone-600 italic mb-1">with {modifier.name} energy</p>
-          <p className="text-sm text-stone-500 italic mb-8">and a {secondary.name.replace(`The `, ``)} running underneath</p>
+          <p className="text-sm text-stone-600 italic mb-1">with {modifier.name.replace(`The `, ``)} energy</p>
+          <p className="text-sm text-stone-600 italic mb-8">& {secondary.name.replace(`The `, ``)} underneath</p>
 
           <div className="my-10 py-6 border-t border-b border-stone-300">
             <p className="text-lg italic text-stone-700">{primary.vibe}</p>
@@ -1263,16 +1263,15 @@ export default function App() {
       <div className="bg-stone-800 text-stone-50 px-6 py-16">
         <div className="max-w-md mx-auto text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">
-            {name ? `${name.toLowerCase()} — your archetype` : `your archetype`}
+            {name ? `${name.toLowerCase()} — your archetype profile` : `your archetype profile`}
           </p>
-          <h1 className="text-3xl md:text-4xl italic mb-3 leading-tight">
+          <h1 className="text-3xl md:text-4xl italic mb-4 leading-tight">
             {primary.name}
           </h1>
-          <p className="text-base md:text-lg italic text-stone-300 mb-2">
+          <p className="text-base md:text-lg italic text-stone-200 mb-8 leading-relaxed">
             with {modifier.name.replace(`The `, ``)} energy
-          </p>
-          <p className="text-sm text-stone-400 mb-8 italic">
-            and a {secondary.name.replace(`The `, ``)} running underneath
+            <br />
+            <span className="text-stone-200">& {secondary.name.replace(`The `, ``)} underneath</span>
           </p>
           <p className="text-lg italic text-stone-100 leading-relaxed">
             `{primary.opening}`
