@@ -467,6 +467,9 @@ export default function App() {
   const [resultSlug, setResultSlug] = useState(null);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
   const [loadingSavedResult, setLoadingSavedResult] = useState(false);
+  const [showPdfEmailGate, setShowPdfEmailGate] = useState(false);
+  const [pdfGateEmail, setPdfGateEmail] = useState(``);
+  const [pdfSaved, setPdfSaved] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [sharedResult, setSharedResult] = useState(null);
 
@@ -635,6 +638,9 @@ export default function App() {
     setResultSlug(null);
     setResultLinkCopied(false);
     setLoadingSavedResult(false);
+    setShowPdfEmailGate(false);
+    setPdfGateEmail(``);
+    setPdfSaved(false);
     setShareLinkCopied(false);
     setSharedResult(null);
     // Clear URL params so they don't loop back to share landing
@@ -736,6 +742,50 @@ export default function App() {
     } catch (err) {
       console.error(`copy failed:`, err);
     }
+  };
+
+  // Email gate handler — decides whether to show gate or just download
+  const handleSaveProfileClick = () => {
+    if (emailSubmitted) {
+      // They already gave their email earlier — just download
+      handleDownloadPDF();
+      setPdfSaved(true);
+      setTimeout(() => setPdfSaved(false), 3000);
+    } else {
+      // Show inline email gate
+      setShowPdfEmailGate(true);
+    }
+  };
+
+  // Submit email gate and download PDF
+  const handleSubmitPdfEmail = async () => {
+    if (!pdfGateEmail.includes(`@`)) return;
+
+    // Save email to Supabase (same as the main email capture)
+    try {
+      if (resultRowId) {
+        await supabase
+          .from(`quiz_results`)
+          .update({ email: pdfGateEmail })
+          .eq(`id`, resultRowId);
+      } else {
+        await supabase
+          .from(`quiz_results`)
+          .insert([{ email: pdfGateEmail, name: name || null }]);
+      }
+    } catch (err) {
+      console.error(`email save error:`, err);
+    }
+
+    // Sync the email state so they're not asked again
+    setEmail(pdfGateEmail);
+    setEmailSubmitted(true);
+
+    // Hide gate and download PDF
+    setShowPdfEmailGate(false);
+    handleDownloadPDF();
+    setPdfSaved(true);
+    setTimeout(() => setPdfSaved(false), 3000);
   };
 
   const handleDownloadPDF = () => {
@@ -1359,21 +1409,62 @@ export default function App() {
         </div>
       </div>
 
-      {/* SAVE YOUR PROFILE - PDF + persistent link */}
+      {/* SAVE YOUR PROFILE - PDF (email-gated) + persistent link (free) */}
       <div className="px-6 pb-12">
         <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">keep this</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">keep it where you won't lose it</p>
           <p className="text-sm text-stone-600 leading-relaxed mb-5 italic">
             save your profile. revisit when you forget who you are.
           </p>
           <div className="space-y-3">
-            <button
-              onClick={handleDownloadPDF}
-              className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
-            >
-              download as pdf
-            </button>
-            {resultSlug && (
+            {!showPdfEmailGate ? (
+              <button
+                onClick={handleSaveProfileClick}
+                className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+              >
+                {pdfSaved ? `saved ✓ check your downloads` : `save my profile`}
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-stone-600 italic">
+                  drop your email and i'll save your profile.
+                </p>
+                <input
+                  type="email"
+                  value={pdfGateEmail}
+                  onChange={(e) => setPdfGateEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === `Enter` && pdfGateEmail.includes(`@`)) {
+                      handleSubmitPdfEmail();
+                    }
+                  }}
+                  placeholder="your email"
+                  className="w-full p-3 border border-stone-300 text-stone-700"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSubmitPdfEmail}
+                  disabled={!pdfGateEmail.includes(`@`)}
+                  className={`w-full py-3 text-xs uppercase tracking-[0.2em] transition-colors ${
+                    pdfGateEmail.includes(`@`)
+                      ? `bg-stone-800 text-stone-50 hover:bg-stone-700`
+                      : `bg-stone-300 text-stone-500 cursor-not-allowed`
+                  }`}
+                >
+                  send my profile
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPdfEmailGate(false);
+                    setPdfGateEmail(``);
+                  }}
+                  className="text-xs text-stone-500 italic hover:text-stone-700 underline"
+                >
+                  nevermind
+                </button>
+              </div>
+            )}
+            {resultSlug && !showPdfEmailGate && (
               <button
                 onClick={handleCopyResultLink}
                 className="w-full bg-white border border-stone-300 text-stone-700 py-3 text-xs uppercase tracking-[0.2em] hover:border-stone-800 hover:bg-stone-50 transition-colors"
