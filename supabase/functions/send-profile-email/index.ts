@@ -119,8 +119,8 @@ function buildEmailHTML(payload: ProfilePayload): string {
           <!-- Modifier & Secondary -->
           <tr>
             <td style="padding: 20px 40px 0 40px; text-align: center;">
-              <p style="margin: 0 0 4px 0; font-style: italic; color: #e1ded5; font-size: 17px;">with <span style="color: #ffffff;">${modifierName.replace("The ", "")}</span> energy</p>
-              <p style="margin: 0; font-style: italic; color: #e1ded5; font-size: 17px;"><span style="color: #a5a29a;">&amp;</span> <span style="color: #ffffff;">${secondaryName.replace("The ", "")}</span> underneath</p>
+              <p style="margin: 0 0 4px 0; font-style: italic; color: #e1ded5; font-size: 20px;">with <span style="color: #ffffff;">${modifierName.replace("The ", "")}</span> energy</p>
+              <p style="margin: 0; font-style: italic; color: #e1ded5; font-size: 20px;"><span style="color: #a5a29a;">&amp;</span> <span style="color: #ffffff;">${secondaryName.replace("The ", "")}</span> underneath</p>
             </td>
           </tr>
 
