@@ -615,6 +615,29 @@ export default function App() {
       .sort((a, b) => b.score - a.score);
   };
 
+  // Returns ranked cores with percentages and tier classification
+  const getArchetypeBreakdown = () => {
+    const ranked = getRankedCores();
+    const totalScore = ranked.reduce((sum, c) => sum + c.score, 0);
+
+    // Map to {key, score, percent, name}
+    const withPercentages = ranked.map((c) => ({
+      key: c.key,
+      score: c.score,
+      percent: totalScore > 0 ? Math.round((c.score / totalScore) * 100) : 0,
+      name: CORES[c.key]?.name || ``
+    }));
+
+    // Tier them
+    const primary = withPercentages[0];
+    const underneath = withPercentages[1];
+    const strongTones = withPercentages.slice(2).filter(c => c.percent >= 8);
+    const traceAmounts = withPercentages.slice(2).filter(c => c.percent > 0 && c.percent < 8);
+    const dontRun = withPercentages.slice(2).filter(c => c.percent === 0);
+
+    return { primary, underneath, strongTones, traceAmounts, dontRun, all: withPercentages };
+  };
+
   const getPrimaryModifier = () => {
     const modKeys = [`storyteller`, `curator`, `defender`, `wit`];
     return modKeys.reduce((max, key) => scores[key] > scores[max] ? key : max, modKeys[0]);
@@ -781,6 +804,7 @@ export default function App() {
       secondaryName: secondary.name,
       secondaryShort: secondary.secondaryShort,
       sections: primary.sections,
+      breakdown: getArchetypeBreakdown(),
       resultUrl: buildResultUrl() || `https://domesticarchetypes.com`
     };
 
@@ -962,6 +986,116 @@ export default function App() {
       }
       y += 14;
     });
+
+    // Divider before breakdown
+    checkPageBreak(120);
+    pdf.setDrawColor(115, 112, 101);
+    pdf.line(pageWidth / 2 - 30, y, pageWidth / 2 + 30, y);
+    y += 28;
+
+    // ARCHETYPE BREAKDOWN SECTION
+    const breakdown = getArchetypeBreakdown();
+
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(8);
+    pdf.text(`YOUR FULL ARCHETYPE PROFILE`, pageWidth / 2, y, { align: `center` });
+    y += 14;
+
+    pdf.setTextColor(209, 207, 198);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(10);
+    pdf.text(`most of us are more than one thing.`, pageWidth / 2, y, { align: `center` });
+    y += 22;
+
+    // PRIMARY
+    checkPageBreak(40);
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(7);
+    pdf.text(`PRIMARY`, pageWidth - margin, y, { align: `right` });
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(14);
+    pdf.text(breakdown.primary.name, margin, y);
+    pdf.setFontSize(16);
+    pdf.text(`${breakdown.primary.percent}%`, pageWidth - margin, y + 8, { align: `right` });
+    y += 18;
+    pdf.setDrawColor(80, 78, 70);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 14;
+
+    // UNDERNEATH
+    checkPageBreak(40);
+    pdf.setTextColor(165, 162, 154);
+    pdf.setFont(`times`, `normal`);
+    pdf.setFontSize(7);
+    pdf.text(`UNDERNEATH`, pageWidth - margin, y, { align: `right` });
+    pdf.setTextColor(245, 244, 237);
+    pdf.setFont(`times`, `italic`);
+    pdf.setFontSize(14);
+    pdf.text(breakdown.underneath.name, margin, y);
+    pdf.setFontSize(16);
+    pdf.text(`${breakdown.underneath.percent}%`, pageWidth - margin, y + 8, { align: `right` });
+    y += 18;
+    pdf.setDrawColor(80, 78, 70);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 22;
+
+    // STRONG TONES
+    if (breakdown.strongTones.length > 0) {
+      checkPageBreak(60);
+      pdf.setTextColor(165, 162, 154);
+      pdf.setFont(`times`, `normal`);
+      pdf.setFontSize(7);
+      pdf.text(`STRONG TONES`, margin, y);
+      y += 12;
+
+      breakdown.strongTones.forEach(tone => {
+        pdf.setTextColor(225, 222, 213);
+        pdf.setFont(`times`, `italic`);
+        pdf.setFontSize(11);
+        pdf.text(tone.name, margin, y);
+        pdf.text(`${tone.percent}%`, pageWidth - margin, y, { align: `right` });
+        y += 14;
+      });
+      y += 8;
+    }
+
+    // TRACE AMOUNTS
+    if (breakdown.traceAmounts.length > 0) {
+      checkPageBreak(40);
+      pdf.setTextColor(165, 162, 154);
+      pdf.setFont(`times`, `normal`);
+      pdf.setFontSize(7);
+      pdf.text(`TRACE AMOUNTS`, margin, y);
+      y += 12;
+
+      pdf.setTextColor(209, 207, 198);
+      pdf.setFont(`times`, `italic`);
+      pdf.setFontSize(10);
+      const traceText = breakdown.traceAmounts.map(t => `${t.name.replace(`The `, ``)} ${t.percent}%`).join(` · `);
+      const traceLines = pdf.splitTextToSize(traceText, contentWidth);
+      traceLines.forEach(line => {
+        pdf.text(line, margin, y);
+        y += 12;
+      });
+      y += 8;
+    }
+
+    // DON'T RUN IN YOU
+    if (breakdown.dontRun.length > 0) {
+      checkPageBreak(30);
+      pdf.setTextColor(165, 162, 154);
+      pdf.setFont(`times`, `italic`);
+      pdf.setFontSize(10);
+      const dontRunNames = breakdown.dontRun.map(d => d.name).join(` and `);
+      const verb = breakdown.dontRun.length === 1 ? `doesn't` : `don't`;
+      pdf.text(`(${dontRunNames} ${verb} run in you.`, pageWidth / 2, y, { align: `center` });
+      y += 12;
+      pdf.text(`and that's information too.)`, pageWidth / 2, y, { align: `center` });
+      y += 18;
+    }
 
     // Divider before modifier
     checkPageBreak(80);
@@ -1359,6 +1493,78 @@ export default function App() {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* FULL ARCHETYPE BREAKDOWN - shows the percentage distribution */}
+      <div className="bg-stone-100 border-y border-stone-300 px-6 py-12">
+        <div className="max-w-md mx-auto">
+          <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-2 text-center">your full archetype profile</p>
+          <p className="text-sm italic text-stone-600 text-center mb-8">most of us are more than one thing.</p>
+
+          {(() => {
+            const breakdown = getArchetypeBreakdown();
+            return (
+              <div className="space-y-6">
+                {/* PRIMARY + UNDERNEATH */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between border-b border-stone-300 pb-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-stone-500 mb-1">primary</p>
+                      <p className="text-lg italic text-stone-900">{breakdown.primary.name}</p>
+                    </div>
+                    <p className="text-2xl italic text-stone-900 font-light">{breakdown.primary.percent}%</p>
+                  </div>
+                  <div className="flex items-baseline justify-between border-b border-stone-300 pb-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-stone-500 mb-1">underneath</p>
+                      <p className="text-lg italic text-stone-900">{breakdown.underneath.name}</p>
+                    </div>
+                    <p className="text-2xl italic text-stone-900 font-light">{breakdown.underneath.percent}%</p>
+                  </div>
+                </div>
+
+                {/* STRONG TONES */}
+                {breakdown.strongTones.length > 0 && (
+                  <div className="space-y-2 pt-4">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-stone-500 mb-3">strong tones</p>
+                    {breakdown.strongTones.map(tone => (
+                      <div key={tone.key} className="flex items-baseline justify-between">
+                        <p className="text-base italic text-stone-700">{tone.name}</p>
+                        <p className="text-base italic text-stone-700">{tone.percent}%</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* TRACE AMOUNTS */}
+                {breakdown.traceAmounts.length > 0 && (
+                  <div className="pt-4">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-stone-500 mb-3">trace amounts</p>
+                    <p className="text-sm italic text-stone-600 leading-relaxed">
+                      {breakdown.traceAmounts.map((t, i) => (
+                        <span key={t.key}>
+                          {t.name.replace(`The `, ``)} {t.percent}%
+                          {i < breakdown.traceAmounts.length - 1 ? ` · ` : ``}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
+                )}
+
+                {/* DON'T RUN IN YOU */}
+                {breakdown.dontRun.length > 0 && (
+                  <div className="pt-4 border-t border-stone-300">
+                    <p className="text-sm italic text-stone-500 leading-relaxed text-center">
+                      ({breakdown.dontRun.map(d => d.name).join(` and `)} {breakdown.dontRun.length === 1 ? `doesn't` : `don't`} run in you.
+                      <br />
+                      and that's information too.)
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
