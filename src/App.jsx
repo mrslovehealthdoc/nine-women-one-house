@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import jsPDF from "jspdf";
+import { Analytics } from "@vercel/analytics/react";
 
 const CORES = {
   wildflower: {
@@ -1828,6 +1829,7 @@ export default function App() {
           </a>
         </p>
       </div>
+      <Analytics />
     </div>
   );
 }
