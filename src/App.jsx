@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import jsPDF from "jspdf";
-import { Analytics } from "@vercel/analytics/react";
 
 const CORES = {
   wildflower: {
@@ -1607,75 +1606,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* EMAIL CAPTURE - moved up to right after vibe line for peak emotional moment */}
-      <div className="px-6 pb-12">
-        <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
-          <p className="text-sm text-stone-600 leading-relaxed mb-4 italic">
-            i'll send you updates when there's something worth sending. nothing else.
-          </p>
-          {!emailSubmitted ? (
-            <div className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your email"
-                className="w-full p-3 border border-stone-300 text-stone-700"
-              />
-              <button
-                onClick={async () => {
-                  if (!email.includes(`@`)) return;
-                  setEmailSubmitted(true);
-                  try {
-                    if (resultRowId) {
-                      await supabase
-                        .from(`quiz_results`)
-                        .update({ email: email })
-                        .eq(`id`, resultRowId);
-                    } else {
-                      await supabase
-                        .from(`quiz_results`)
-                        .insert([{ email: email, name: name || null }]);
-                    }
-                  } catch (err) {
-                    console.error(`email save error:`, err);
-                  }
-                  // Trigger profile email send (fire and forget)
-                  sendProfileEmail(email);
-                }}
-                className="w-full bg-stone-800 text-stone-50 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
-              >
-                keep me in the loop
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-stone-700 italic">got it. check your inbox 🪞</p>
-          )}
-        </div>
-      </div>
-
-      {/* SHARE - native share for general sharing */}
-      <div className="px-6 pb-8 text-center">
-        <div className="max-w-md mx-auto">
-          <p className="text-sm text-stone-700 mb-1 italic">
-            {primary.shareCallout}
-          </p>
-          <p className="text-xs text-stone-500 mb-5 italic">
-            or just post it. somebody you know is on this list.
-          </p>
-          <button
-            onClick={handleShare}
-            className="bg-stone-800 text-stone-50 px-8 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
-          >
-            share my result
-          </button>
-          {shareStatus && (
-            <p className="text-sm text-stone-600 mt-3 italic">{shareStatus}</p>
-          )}
-        </div>
-      </div>
-
       {/* SAVE YOUR PROFILE - PDF (email-gated) + persistent link (free) */}
+      {/* moved up to peak emotional moment, replacing the deleted "keep me in the loop" block */}
       <div className="px-6 pb-12">
         <div className="max-w-md mx-auto bg-white p-6 border border-stone-200 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-stone-500 mb-4">save your profile</p>
@@ -1746,6 +1678,28 @@ export default function App() {
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* SHARE - native share for general sharing */}
+      {/* moved below save - you save your own profile, then share */}
+      <div className="px-6 pb-8 text-center">
+        <div className="max-w-md mx-auto">
+          <p className="text-sm text-stone-700 mb-1 italic">
+            {primary.shareCallout}
+          </p>
+          <p className="text-xs text-stone-500 mb-5 italic">
+            or just post it. somebody you know is on this list.
+          </p>
+          <button
+            onClick={handleShare}
+            className="bg-stone-800 text-stone-50 px-8 py-3 text-xs uppercase tracking-[0.2em] hover:bg-stone-700 transition-colors"
+          >
+            share my result
+          </button>
+          {shareStatus && (
+            <p className="text-sm text-stone-600 mt-3 italic">{shareStatus}</p>
+          )}
         </div>
       </div>
 
@@ -1829,7 +1783,6 @@ export default function App() {
           </a>
         </p>
       </div>
-      <Analytics />
     </div>
   );
 }
